@@ -14,7 +14,7 @@
 1. 克隆仓库
 ```bash
 git clone https://github.com/heroichu/AutomatiWow.git
-cd wow-auto-key
+cd AutomatiWow
 ```
 
 2. 安装依赖
