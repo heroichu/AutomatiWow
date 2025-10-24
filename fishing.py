@@ -30,8 +30,8 @@ timer_stop_event = threading.Event()
 def set_capture_point():
     global CAPTURE_POINT
     # 监视的点的Y坐标
-    x = 406
-    y = 840  
+    x = 439
+    y = 755 
     CAPTURE_POINT = (x, y)
     print(f"捕获点已设置为：{CAPTURE_POINT}")
 
@@ -72,38 +72,38 @@ def pixel_detection_thread():
             pause_detection.set()  # 暂停检测
         time.sleep(0.05)  # 每0.05秒检测一次
 
-def timer_thread():
-    """定时器线程： 每10-15秒发送一次数字键4"""
-    timer_hwnd = win32gui.FindWindow(None, "魔兽世界")
+# def timer_thread():
+#     """定时器线程： 每10-15秒发送一次数字键4"""
+#     timer_hwnd = win32gui.FindWindow(None, "魔兽世界")
     
-    while not timer_stop_event.is_set():
-        # 测试用短等待时间：10-15秒
-        wait_time = random.uniform(288, 299)
+#     while not timer_stop_event.is_set():
+#         # 测试用短等待时间：10-15秒
+#         wait_time = random.uniform(288, 299)
 
 
-        print(f"定时器：下次发送数字键4还需等待 {wait_time:.1f} 秒")
+#         print(f"定时器：下次发送数字键4还需等待 {wait_time:.1f} 秒")
         
-        # 分段等待，以便能够响应停止事件
-        elapsed = 0
-        while elapsed < wait_time and not timer_stop_event.is_set():
-            time.sleep(1)  # 每秒检查一次是否需要停止
-            elapsed += 1
+#         # 分段等待，以便能够响应停止事件
+#         elapsed = 0
+#         while elapsed < wait_time and not timer_stop_event.is_set():
+#             time.sleep(1)  # 每秒检查一次是否需要停止
+#             elapsed += 1
         
-        # 检查是否被停止
-        if timer_stop_event.is_set():
-            print("定时器线程正在退出...")
-            return
+#         # 检查是否被停止
+#         if timer_stop_event.is_set():
+#             print("定时器线程正在退出...")
+#             return
         
-        # 发送数字键4
-        if timer_hwnd:
-            try:
-                print(f"定时器：准备发送数字键4到窗口句柄 {timer_hwnd}")
-                send_key(timer_hwnd, VK_4)
-                print("定时器：已成功发送数字键4")
-            except Exception as e:
-                print(f"定时器发送按键失败: {e}")
-        else:
-            print("定时器：窗口句柄无效，无法发送按键")
+#         # 发送数字键4
+#         if timer_hwnd:
+#             try:
+#                 print(f"定时器：准备发送数字键4到窗口句柄 {timer_hwnd}")
+#                 send_key(timer_hwnd, VK_4)
+#                 print("定时器：已成功发送数字键4")
+#             except Exception as e:
+#                 print(f"定时器发送按键失败: {e}")
+#         else:
+#             print("定时器：窗口句柄无效，无法发送按键")
 
 def main():
     global color_changed, initial_color
@@ -125,9 +125,9 @@ def main():
     detection_thread.daemon = True
     detection_thread.start()
 
-    timer_thread_obj = threading.Thread(target=timer_thread)
-    timer_thread_obj.daemon = True
-    timer_thread_obj.start()
+    # timer_thread_obj = threading.Thread(target=timer_thread)
+    # timer_thread_obj.daemon = True
+    # timer_thread_obj.start()
 
 
     try:
@@ -152,11 +152,11 @@ def main():
                     print(f"等待 {delay:.2f} 秒后继续等待循环")
                     time.sleep(delay)
 
-                    send_key(hwnd, VK_3)
-                    print("已发送数字键3")
-                    delay = random.uniform(1.0, 2.0)
-                    print(f"等待 {delay:.2f} 秒后继续等待循环")
-                    time.sleep(delay)
+                    # send_key(hwnd, VK_3)
+                    # print("已发送数字键3")
+                    # delay = random.uniform(1.0, 2.0)
+                    # print(f"等待 {delay:.2f} 秒后继续等待循环")
+                    # time.sleep(delay)
 
                     # 重置初始颜色
                     screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1))

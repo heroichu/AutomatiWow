@@ -72,38 +72,38 @@ def pixel_detection_thread():
             pause_detection.set()  # 暂停检测
         time.sleep(0.05)  # 每0.05秒检测一次
 
-def timer_thread():
-    """定时器线程：测试版本 - 每10-15秒发送一次数字键4"""
-    timer_hwnd = win32gui.FindWindow(None, "魔兽世界")
+# def timer_thread():
+#     """定时器线程：测试版本 - 每10-15秒发送一次数字键4"""
+#     timer_hwnd = win32gui.FindWindow(None, "魔兽世界")
     
-    while not timer_stop_event.is_set():
-        # 测试用短等待时间：10-15秒
-        wait_time = random.uniform(300,303)
+#     while not timer_stop_event.is_set():
+#         # 测试用短等待时间：10-15秒
+#         wait_time = random.uniform(300,303)
 
 
-        print(f"定时器：下次发送数字键4还需等待 {wait_time:.1f} 秒")
+#         print(f"定时器：下次发送数字键4还需等待 {wait_time:.1f} 秒")
         
-        # 分段等待，以便能够响应停止事件
-        elapsed = 0
-        while elapsed < wait_time and not timer_stop_event.is_set():
-            time.sleep(1)  # 每秒检查一次是否需要停止
-            elapsed += 1
+#         # 分段等待，以便能够响应停止事件
+#         elapsed = 0
+#         while elapsed < wait_time and not timer_stop_event.is_set():
+#             time.sleep(1)  # 每秒检查一次是否需要停止
+#             elapsed += 1
         
-        # 检查是否被停止
-        if timer_stop_event.is_set():
-            print("定时器线程正在退出...")
-            return
+#         # 检查是否被停止
+#         if timer_stop_event.is_set():
+#             print("定时器线程正在退出...")
+#             return
         
-        # 发送数字键4
-        if timer_hwnd:
-            try:
-                print(f"定时器：准备发送数字键4到窗口句柄 {timer_hwnd}")
-                send_key(timer_hwnd, VK_3)
-                print("定时器：已成功发送数字键4")
-            except Exception as e:
-                print(f"定时器发送按键失败: {e}")
-        else:
-            print("定时器：窗口句柄无效，无法发送按键")
+#         # 发送数字键4
+#         if timer_hwnd:
+#             try:
+#                 print(f"定时器：准备发送数字键4到窗口句柄 {timer_hwnd}")
+#                 send_key(timer_hwnd, VK_3)
+#                 print("定时器：已成功发送数字键4")
+#             except Exception as e:
+#                 print(f"定时器发送按键失败: {e}")
+#         else:
+#             print("定时器：窗口句柄无效，无法发送按键")
 
 def main():
     global color_changed, initial_color
@@ -114,23 +114,22 @@ def main():
         return
     print(f"找到窗口，句柄为: {hwnd}")
 
-    timer = threading.Thread(target=timer_thread)
-    timer.daemon = True
-    timer.start()
-    print("定时器线程已启动")
+    # timer = threading.Thread(target=timer_thread)
+    # timer.daemon = True
+    # timer.start()
+    # print("定时器线程已启动")
     
     try:
         while True:
-                    t = 3
-                    send_key(hwnd, VK_1)
-                    print("已发送数字键1")
-                    delay = random.uniform(1.0, 2.0)
+                    t = random.randint(20,30)
+                    print(t)
+                    send_key(hwnd, VK_2)
+                    delay = random.uniform(0.3, 0.5)
                     #print(f"等待 {delay:.2f} 秒后继续等待循环")
                     time.sleep(delay)
                     for i in range(t):
-                        send_key(hwnd, VK_2)
-                        delay = random.uniform(1.8,2.2)
-                        print(f"已发送数字键2  {delay}")
+                        send_key(hwnd, VK_1)
+                        delay = random.uniform(0.3, 0.6)
                         time.sleep(delay)
                     #print(f"等待 {delay:.2f} 秒后继续等待循环")
                     time.sleep(delay)  # 短暂睡眠以避免过度消耗 CPU
