@@ -30,8 +30,8 @@ timer_stop_event = threading.Event()
 def set_capture_point():
     global CAPTURE_POINT
     # 监视的点的Y坐标
-    x = 439
-    y = 755 
+    x = 410
+    y = 436
     CAPTURE_POINT = (x, y)
     print(f"捕获点已设置为：{CAPTURE_POINT}")
 
@@ -134,7 +134,7 @@ def main():
         while True:
             send_key(hwnd, VK_1)
             print("已发送数字键1")
-            wait_time = random.uniform(18, 21)
+            wait_time = random.uniform(18, 20)
             print(f"等待 {wait_time:.2f} 秒")
 
             start_time = time.time()

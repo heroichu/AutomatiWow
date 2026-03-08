@@ -43,37 +43,36 @@ def control_single_window(hwnd, window_title, window_index):
         last_key4_press = time.time()  # 记录上次按下数字4的时间（相对时间）
 
         while not timer_stop_event.is_set():
-            t = random.randint(20, 30)
+            t = random.randint(30, 50)
             print(f"[窗口{window_index}] 循环次数: {t}")
             
             send_key(hwnd, VK_2)
-            delay = random.uniform(0.3, 0.5)
+            delay = random.uniform(0.2, 0.4)
             time.sleep(delay)
             
             for i in range(t):
                 if timer_stop_event.is_set():  # 允许中途退出
                     break
                 send_key(hwnd, VK_1)
-                delay = random.uniform(0.3, 0.6)
+                delay = random.uniform(0.2, 0.4)
                 time.sleep(delay)
-            delay = random.uniform(0.5, 0.7)
-            time.sleep(delay)
+
             current_time = time.time()
                     
                 # 检查是否超过90秒，按下数字3
-            if current_time - last_key3_press >= 90:
-                delay = random.uniform(1.0, 1.5)
-                time.sleep(delay)
+            if current_time - last_key3_press >= 15:
                 print(f"[窗口{window_index}] 间隔{current_time - last_key3_press:.1f}秒，按下数字键3")
                 send_key(hwnd, VK_3)
+                delay = random.uniform(0.2, 0.4)
+                time.sleep(delay)
                 last_key3_press = current_time  
                     
                 # 检查是否超过120秒，按下数字4
-            if current_time - last_key4_press >= 120:
-                delay = random.uniform(1.0, 1.5)
-                time.sleep(delay)
+            if current_time - last_key4_press >= 90:
                 print(f"[窗口{window_index}] 已运行{current_time - last_key4_press:.1f}秒，按下数字键4")
                 send_key(hwnd, VK_4)
+                delay = random.uniform(0.2, 0.4)
+                time.sleep(delay)
                 last_key4_press = current_time
                 
     except Exception as e:
