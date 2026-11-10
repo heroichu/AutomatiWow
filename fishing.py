@@ -8,7 +8,7 @@ from PIL import ImageGrab
 import threading
 
 VK_1 = 0x31  # 数字键 1 的虚拟键码
-VK_2 = 0x32  # 数字键 2 的虚拟键码
+VK_2 = 0x37  # 数字键 2 的虚拟键码
 VK_3 = 0x33
 VK_4 = 0x34
 VK_RB = 0x5D
@@ -30,8 +30,8 @@ timer_stop_event = threading.Event()
 def set_capture_point():
     global CAPTURE_POINT
     # 监视的点的Y坐标
-    x = 410
-    y = 436
+    x = 348
+    y = 1118
     CAPTURE_POINT = (x, y)
     print(f"捕获点已设置为：{CAPTURE_POINT}")
 
@@ -45,7 +45,7 @@ def color_distance(color1, color2):
 
 def detect_color_change():
     global initial_color
-    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1))
+    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1), all_screens=True)
     current_color = screenshot.getpixel((0, 0))
 
     if initial_color is None:
@@ -117,7 +117,7 @@ def main():
     set_capture_point()
 
     # 获取初始颜色
-    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1))
+    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1), all_screens=True)
     initial_color = screenshot.getpixel((0, 0))
     print(f"初始颜色：{initial_color}")
 
@@ -134,7 +134,7 @@ def main():
         while True:
             send_key(hwnd, VK_1)
             print("已发送数字键1")
-            wait_time = random.uniform(18, 20)
+            wait_time = random.uniform(25, 28)
             print(f"等待 {wait_time:.2f} 秒")
 
             start_time = time.time()
@@ -148,7 +148,7 @@ def main():
                     time.sleep(delay)
                     send_key(hwnd, VK_2)
                     print("已发送数字键2")
-                    delay = random.uniform(1.0, 3.0)
+                    delay = random.uniform(2.0, 3.0)
                     print(f"等待 {delay:.2f} 秒后继续等待循环")
                     time.sleep(delay)
 
@@ -159,7 +159,7 @@ def main():
                     # time.sleep(delay)
 
                     # 重置初始颜色
-                    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1))
+                    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1), all_screens=True)
                     initial_color = screenshot.getpixel((0, 0))
                     print(f"重置初始颜色为：{initial_color}")
 
