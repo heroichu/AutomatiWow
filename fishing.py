@@ -1,174 +1,118 @@
 import win32gui
 import win32con
 import win32api
+import win32process
 import time
 import random
-import numpy as np
-from PIL import ImageGrab
-import threading
+import math
 
-VK_1 = 0x31  # 数字键 1 的虚拟键码
-VK_2 = 0x37  # 数字键 2 的虚拟键码
+from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
+
+VK_1 = 0x31  # 数字键 1：抛竿
+VK_2 = 0x37  # 数字键 7：收竿（互动键）
 VK_3 = 0x33
 VK_4 = 0x34
-VK_RB = 0x5D
 
-# 初始化捕获参数
-CAPTURE_POINT = None
-COLOR_CHANGE_THRESHOLD = 30  # 颜色变化阈值，可以根据需要调整
+# ===== 声音检测参数（按实际情况调整）=====
+TRIGGER_DB = -20.0        # 绝对阈值：峰值至少要超过该分贝
+MARGIN_DB = 15.0          # 相对阈值：且要比背景噪声高出这么多分贝
+CAST_GRACE = 2.0          # 抛竿后忽略的秒数（避免把抛竿声误判为咬钩）
+BASELINE_TIME = 1.0       # 抛竿后用于测量背景噪声的秒数
+POLL_INTERVAL = 0.02      # 采样间隔（秒）
+CONFIRM_SAMPLES = 3      # 连续多少个采样超过阈值才判定，防止偶发尖峰
+CAST_TIMEOUT = (25, 28)   # 每次抛竿最长等待时间（随机范围）
+REEL_DELAY = (0.5, 1.0)   # 检测到咬钩后，随机延迟多少秒再收竿（模拟人反应时间）
 
-# 全局变量用于线程间通信
-color_changed = False
-color_change_lock = threading.Lock()
-pause_detection = threading.Event()
-
-# 新增：初始颜色
-initial_color = None
-timer_hwnd = None
-timer_stop_event = threading.Event()
-
-def set_capture_point():
-    global CAPTURE_POINT
-    # 监视的点的Y坐标
-    x = 348
-    y = 1118
-    CAPTURE_POINT = (x, y)
-    print(f"捕获点已设置为：{CAPTURE_POINT}")
 
 def send_key(hwnd, key):
     win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, key, 0)
     time.sleep(0.1)
     win32api.PostMessage(hwnd, win32con.WM_KEYUP, key, 0)
 
-def color_distance(color1, color2):
-    return sum((a - b) ** 2 for a, b in zip(color1, color2)) ** 0.5
 
-def detect_color_change():
-    global initial_color
-    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1), all_screens=True)
-    current_color = screenshot.getpixel((0, 0))
-
-    if initial_color is None:
-        initial_color = current_color
-        return False
-
-    distance = color_distance(initial_color, current_color)
-    return distance > COLOR_CHANGE_THRESHOLD
-
-def pixel_detection_thread():
-    global color_changed
-    print("开始监测像素颜色变化...")
-
-    while True:
-        if pause_detection.is_set():
-            time.sleep(0.1)
-            continue
-
-        changed = detect_color_change()
-        if changed:
-            with color_change_lock:
-                color_changed = True
-            print("检测到颜色变化！")
-            pause_detection.set()  # 暂停检测
-        time.sleep(0.05)  # 每0.05秒检测一次
-
-# def timer_thread():
-#     """定时器线程： 每10-15秒发送一次数字键4"""
-#     timer_hwnd = win32gui.FindWindow(None, "魔兽世界")
-    
-#     while not timer_stop_event.is_set():
-#         # 测试用短等待时间：10-15秒
-#         wait_time = random.uniform(288, 299)
+def to_db(peak):
+    """把 0~1 的峰值转换为 dBFS（0 dB 为最大）"""
+    return 20 * math.log10(peak) if peak > 1e-6 else -120.0
 
 
-#         print(f"定时器：下次发送数字键4还需等待 {wait_time:.1f} 秒")
-        
-#         # 分段等待，以便能够响应停止事件
-#         elapsed = 0
-#         while elapsed < wait_time and not timer_stop_event.is_set():
-#             time.sleep(1)  # 每秒检查一次是否需要停止
-#             elapsed += 1
-        
-#         # 检查是否被停止
-#         if timer_stop_event.is_set():
-#             print("定时器线程正在退出...")
-#             return
-        
-#         # 发送数字键4
-#         if timer_hwnd:
-#             try:
-#                 print(f"定时器：准备发送数字键4到窗口句柄 {timer_hwnd}")
-#                 send_key(timer_hwnd, VK_4)
-#                 print("定时器：已成功发送数字键4")
-#             except Exception as e:
-#                 print(f"定时器发送按键失败: {e}")
-#         else:
-#             print("定时器：窗口句柄无效，无法发送按键")
+def get_game_meter(hwnd):
+    """根据窗口句柄找到对应进程的音频会话，返回其音量表接口"""
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    for session in AudioUtilities.GetAllSessions():
+        if session.Process and session.ProcessId == pid:
+            return session._ctl.QueryInterface(IAudioMeterInformation)
+    return None
+
+
+def read_db(meter):
+    return to_db(meter.GetPeakValue())
+
+
+def wait_for_bite(meter, timeout):
+    """抛竿后监听游戏声音，检测到咬钩返回 True，超时返回 False"""
+    start = time.time()
+
+    # 1. 忽略抛竿音效
+    time.sleep(CAST_GRACE)
+
+    # 2. 测量背景噪声（取这段时间的最大峰值）
+    baseline = -120.0
+    t0 = time.time()
+    while time.time() - t0 < BASELINE_TIME:
+        baseline = max(baseline, read_db(meter))
+        time.sleep(POLL_INTERVAL)
+    # 取较大者：必须同时满足绝对阈值和相对背景噪声阈值
+    threshold = max(TRIGGER_DB, baseline + MARGIN_DB)
+    print(f"背景噪声 {baseline:.1f} dB，触发阈值 {threshold:.1f} dB")
+
+    # 3. 监听咬钩溅水声
+    hits = 0
+    while time.time() - start < timeout:
+        db = read_db(meter)
+        if db > threshold:
+            hits += 1
+            if hits >= CONFIRM_SAMPLES:
+                print(f"检测到咬钩！当前 {db:.1f} dB")
+                return True
+        else:
+            hits = 0
+        time.sleep(POLL_INTERVAL)
+    return False
+
 
 def main():
-    global color_changed, initial_color
-    print("请确保魔兽世界窗口可见。")
+    print("请确保魔兽世界正在运行，并开启『后台播放声音』。")
     hwnd = win32gui.FindWindow(None, "魔兽世界")
     if not hwnd:
         print("未找到指定窗口")
         return
     print(f"找到窗口，句柄为: {hwnd}")
 
-    set_capture_point()
-
-    # 获取初始颜色
-    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1), all_screens=True)
-    initial_color = screenshot.getpixel((0, 0))
-    print(f"初始颜色：{initial_color}")
-
-    detection_thread = threading.Thread(target=pixel_detection_thread)
-    detection_thread.daemon = True
-    detection_thread.start()
-
-    # timer_thread_obj = threading.Thread(target=timer_thread)
-    # timer_thread_obj.daemon = True
-    # timer_thread_obj.start()
-
+    meter = get_game_meter(hwnd)
+    if meter is None:
+        print("未找到游戏的音频会话，请先让游戏发出一次声音（如抛一次竿）后再运行")
+        return
+    print("已连接到游戏音频会话")
 
     try:
         while True:
             send_key(hwnd, VK_1)
-            print("已发送数字键1")
-            wait_time = random.uniform(25, 28)
-            print(f"等待 {wait_time:.2f} 秒")
+            timeout = random.uniform(*CAST_TIMEOUT)
+            print(f"已抛竿，最长等待 {timeout:.2f} 秒")
 
-            start_time = time.time()
-            while time.time() - start_time < wait_time:
-                if pause_detection.is_set():
-                    with color_change_lock:
-                        color_changed = False
+            if wait_for_bite(meter, timeout):
+                delay = random.uniform(*REEL_DELAY)
+                print(f"随机等待 {delay:.2f} 秒后收竿")
+                time.sleep(delay)
+                send_key(hwnd, VK_2)
+                print("已收竿")
+            else:
+                print("超时未咬钩，重新抛竿")
 
-                    delay = random.uniform(0.3, 1.5)
-                    print(f"等待 {delay:.2f} 秒后发送数字键2")
-                    time.sleep(delay)
-                    send_key(hwnd, VK_2)
-                    print("已发送数字键2")
-                    delay = random.uniform(2.0, 3.0)
-                    print(f"等待 {delay:.2f} 秒后继续等待循环")
-                    time.sleep(delay)
-
-                    # send_key(hwnd, VK_3)
-                    # print("已发送数字键3")
-                    # delay = random.uniform(1.0, 2.0)
-                    # print(f"等待 {delay:.2f} 秒后继续等待循环")
-                    # time.sleep(delay)
-
-                    # 重置初始颜色
-                    screenshot = ImageGrab.grab(bbox=(CAPTURE_POINT[0], CAPTURE_POINT[1], CAPTURE_POINT[0] + 1, CAPTURE_POINT[1] + 1), all_screens=True)
-                    initial_color = screenshot.getpixel((0, 0))
-                    print(f"重置初始颜色为：{initial_color}")
-
-                    pause_detection.clear()  # 恢复检测
-                    break
-                time.sleep(0.1)  # 短暂睡眠以避免过度消耗 CPU
+            time.sleep(random.uniform(2.0, 3.0))
     except KeyboardInterrupt:
         print("\n程序已停止")
-        timer_stop_event.set()  # 停止定时器线程
+
 
 if __name__ == "__main__":
     main()

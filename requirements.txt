@@ -4,3 +4,4 @@ pywin32>=227
 Pillow>=8.0.0
 pynput>=1.7.0
 numpy>=1.19.0
+pycaw>=20230407
